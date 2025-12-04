@@ -5,7 +5,9 @@ pipeline {
         PROJECT_NAME = "pipeline-test"
         SONARQUBE_URL = "http://sonarqube:9000"
         SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
-        TARGET_URL = "http://172.26.115.231:5000" // Tu Flask app corriendo en WSL
+        TARGET_URL = "http://flaskapp:5000" // Cambia "flaskapp" por el nombre de tu contenedor Flask en jenkins-net
+        ZAP_HOST = "zap"                    // Nombre del contenedor ZAP
+        ZAP_PORT = "8080"
     }
 
     stages {
@@ -69,29 +71,20 @@ pipeline {
 
         stage('OWASP ZAP Baseline Scan') {
             steps {
-                sh '''
-                    docker run --rm \
-                        --network jenkins-net \
-                        -v $WORKSPACE:/zap/wrk/:rw \
-                        ghcr.io/zaproxy/zaproxy:stable \
-                        zap-baseline.py -t ${TARGET_URL} -r ZAP-Baseline-Report.html -I -d
-                '''
+                script {
+                    // Ejecuta el escaneo con ZAP ya levantado
+                    sh """
+                        zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} status -t 120
+                        zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} open-url ${TARGET_URL}
+                        zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} spider ${TARGET_URL}
+                        zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} active-scan ${TARGET_URL}
+                        zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} report -o ZAP-Baseline-Report.html -f html
+                    """
+                }
             }
         }
 
-        stage('OWASP ZAP Full Scan') {
-            steps {
-                sh '''
-                    docker run --rm \
-                        --network jenkins-net \
-                        -v $WORKSPACE:/zap/wrk/:rw \
-                        ghcr.io/zaproxy/zaproxy:stable \
-                        zap-full-scan.py -t ${TARGET_URL} -r ZAP-Full-Scan.html -I -d
-                '''
-            }
-        }
-
-        stage('Publish ZAP Reports') {
+        stage('Publish ZAP Report') {
             steps {
                 publishHTML([
                     allowMissing: true,
@@ -99,15 +92,7 @@ pipeline {
                     keepAll: true,
                     reportDir: '.',                   
                     reportFiles: 'ZAP-Baseline-Report.html',  
-                    reportName: 'OWASP ZAP Baseline Report'
-                ])
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: '.',                   
-                    reportFiles: 'ZAP-Full-Scan.html',  
-                    reportName: 'OWASP ZAP Full Scan Report'
+                    reportName: 'OWASP ZAP Report'
                 ])
             }
         }
@@ -119,12 +104,10 @@ pipeline {
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'dependency-check-report',
-                    reportFiles: 'pip-audit.md', // Ajustado al archivo que genera pip-audit
+                    reportFiles: 'pip-audit.md',
                     reportName: 'Python Dependency Check Report'
                 ])
             }
         }
     }
 }
-
-
