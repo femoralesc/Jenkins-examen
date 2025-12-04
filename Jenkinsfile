@@ -70,19 +70,9 @@ pipeline {
         stage('OWASP ZAP Baseline Scan') {
             steps {
                 script {
-                    // Usamos ZAP externo (contenedor)
-                    startZap(
-                        zapHost: 'zap',       // nombre del contenedor ZAP
-                        zapPort: 8080,        // puerto interno del contenedor
-                        credentialsId: 'zap-cred',
-                        externalZap: true     // Muy importante para no arrancar ZAP local
-                    )
-
-                    // Crawling y escaneo
-                    runZapCrawler(target: "${TARGET_URL}")
-                    runZapAttack(target: "${TARGET_URL}", attackMode: 'baseline')
-
-                    // Archiva el reporte
+                    // Escaneo usando ZAP externo (contenedor)
+                    runZapCrawler(target: "${TARGET_URL}", zapHost: 'zap', zapPort: 8080)
+                    runZapAttack(target: "${TARGET_URL}", attackMode: 'baseline', zapHost: 'zap', zapPort: 8080)
                     archiveZap()
                 }
             }
@@ -115,4 +105,5 @@ pipeline {
         }
     }
 }
+
 
