@@ -5,7 +5,7 @@ pipeline {
         PROJECT_NAME = "pipeline-test"
         SONARQUBE_URL = "http://sonarqube:9000"
         SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
-        TARGET_URL = "http://flaskapp:5000" // Cambia "flaskapp" por el nombre de tu contenedor Flask en jenkins-net
+        TARGET_URL = "http://172.26.115.231:5000" // Tu Flask app corriendo en WSL
     }
 
     stages {
@@ -71,10 +71,10 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm \
-                    --network jenkins-net \
-                    -v $WORKSPACE:/zap/wrk/:rw \
-                    ghcr.io/zaproxy/zaproxy:stable \
-                    zap-baseline.py -t ${TARGET_URL} -r ZAP-Baseline-Report.html
+                        --network jenkins-net \
+                        -v $WORKSPACE:/zap/wrk/:rw \
+                        ghcr.io/zaproxy/zaproxy:stable \
+                        zap-baseline.py -t ${TARGET_URL} -r ZAP-Baseline-Report.html -I -d
                 '''
             }
         }
@@ -83,10 +83,10 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm \
-                    --network jenkins-net \
-                    -v $WORKSPACE:/zap/wrk/:rw \
-                    ghcr.io/zaproxy/zaproxy:stable \
-                    zap-full-scan.py -t ${TARGET_URL} -r ZAP-Full-Scan.html
+                        --network jenkins-net \
+                        -v $WORKSPACE:/zap/wrk/:rw \
+                        ghcr.io/zaproxy/zaproxy:stable \
+                        zap-full-scan.py -t ${TARGET_URL} -r ZAP-Full-Scan.html -I -d
                 '''
             }
         }
@@ -119,11 +119,12 @@ pipeline {
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'dependency-check-report',
-                    reportFiles: 'dependency-check-report.html',
-                    reportName: 'OWASP Dependency Check Report'
+                    reportFiles: 'pip-audit.md', // Ajustado al archivo que genera pip-audit
+                    reportName: 'Python Dependency Check Report'
                 ])
             }
         }
     }
 }
+
 
