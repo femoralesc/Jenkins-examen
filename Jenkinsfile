@@ -5,7 +5,7 @@ pipeline {
         PROJECT_NAME = "pipeline-test"
         SONARQUBE_URL = "http://sonarqube:9000"
         SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
-        TARGET_URL = "http://flaskapp:5000" // Cambia "flaskapp" por el nombre de tu contenedor Flask en jenkins-net
+        TARGET_URL = "http://flaskapp:5000" // Nombre del contenedor Flask en jenkins-net
         ZAP_HOST = "zap"                    // Nombre del contenedor ZAP
         ZAP_PORT = "8080"
     }
@@ -69,10 +69,17 @@ pipeline {
             }
         }
 
+        stage('Install ZAP CLI') {
+            steps {
+                sh '''
+                    pip install zap-cli
+                '''
+            }
+        }
+
         stage('OWASP ZAP Baseline Scan') {
             steps {
                 script {
-                    // Ejecuta el escaneo con ZAP ya levantado
                     sh """
                         zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} status -t 120
                         zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} open-url ${TARGET_URL}
@@ -111,3 +118,4 @@ pipeline {
         }
     }
 }
+
