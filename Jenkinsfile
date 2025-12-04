@@ -67,7 +67,11 @@ pipeline {
                 script {
                     sh """
                         echo 'Esperando a que ZAP esté listo...'
-                        until curl -s http://${ZAP_HOST}:${ZAP_PORT} >/dev/null; do sleep 5; done
+                        until curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/view/version/" | grep -q version; do
+                            echo 'ZAP aún no listo, esperando 5s...'
+                            sleep 5
+                        done
+                        echo 'ZAP listo para escanear'
 
                         echo 'Abriendo URL de la app en ZAP'
                         curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/action/accessUrl/?url=${TARGET_URL}"
@@ -112,6 +116,7 @@ pipeline {
         }
     }
 }
+
 
 
 
