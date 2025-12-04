@@ -4,7 +4,7 @@ pipeline {
     environment {
         PROJECT_NAME = "pipeline-test"
         SONARQUBE_URL = "http://sonarqube:9000"
-        SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
+        SONARQUBE_TOKEN = "sqa_d1cae587e88c02f425c8ca6a1559612afb182877"
         TARGET_URL = "http://flaskapp:5000" // Contenedor Flask
         ZAP_HOST = "zap"
         ZAP_PORT = "8080"
