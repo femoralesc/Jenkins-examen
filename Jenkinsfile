@@ -6,7 +6,7 @@ pipeline {
         SONARQUBE_URL = "http://sonarqube:9000"
         SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
         TARGET_URL = "http://flaskapp:5000" // Contenedor Flask
-        ZAP_CONTAINER = "zap"
+        ZAP_HOST = "zap"
         ZAP_PORT = "8080"
     }
 
@@ -16,7 +16,7 @@ pipeline {
             steps {
                 sh '''
                     apt update
-                    apt install -y python3 python3-venv python3-pip
+                    apt install -y python3 python3-venv python3-pip curl
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip
@@ -66,24 +66,24 @@ pipeline {
             steps {
                 script {
                     sh """
-                        echo 'Esperando a que ZAP esté healthy...'
-                        until [ "\$(docker inspect -f '{{.State.Health.Status}}' ${ZAP_CONTAINER})" == "healthy" ]; do
+                        echo 'Esperando a que ZAP esté listo...'
+                        until curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/view/version/" | grep -q version; do
                             echo 'ZAP aún no listo, esperando 5s...'
                             sleep 5
                         done
                         echo 'ZAP listo para escanear'
 
                         echo 'Abriendo URL de la app en ZAP'
-                        curl -s "http://localhost:${ZAP_PORT}/JSON/core/action/accessUrl/?url=${TARGET_URL}"
+                        curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/core/action/accessUrl/?url=${TARGET_URL}"
 
                         echo 'Ejecutando Spider'
-                        curl -s "http://localhost:${ZAP_PORT}/JSON/spider/action/scan/?url=${TARGET_URL}"
+                        curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?url=${TARGET_URL}"
 
                         echo 'Ejecutando Active Scan'
-                        curl -s "http://localhost:${ZAP_PORT}/JSON/ascan/action/scan/?url=${TARGET_URL}"
+                        curl -s "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?url=${TARGET_URL}"
 
                         echo 'Generando reporte HTML'
-                        curl -s "http://localhost:${ZAP_PORT}/OTHER/core/other/htmlreport/?apikey=&out=ZAP-Baseline-Report.html"
+                        curl -s "http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/?apikey=&out=ZAP-Baseline-Report.html"
                     """
                 }
             }
@@ -116,8 +116,6 @@ pipeline {
         }
     }
 }
-
-
 
 
 
