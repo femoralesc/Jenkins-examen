@@ -5,25 +5,18 @@ pipeline {
         PROJECT_NAME = "pipeline-test"
         SONARQUBE_URL = "http://sonarqube:9000"
         SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
-        TARGET_URL = "http://flaskapp:5000" // Nombre del contenedor Flask en jenkins-net
-        ZAP_HOST = "zap"                    // Nombre del contenedor ZAP
+        TARGET_URL = "http://flaskapp:5000" // Contenedor Flask
+        ZAP_HOST = "zap"                    // Contenedor ZAP
         ZAP_PORT = "8080"
     }
 
     stages {
 
-        stage('Install Python') {
+        stage('Install Python & Setup venv') {
             steps {
                 sh '''
                     apt update
                     apt install -y python3 python3-venv python3-pip
-                '''
-            }
-        }
-
-        stage('Setup Environment') {
-            steps {
-                sh '''
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip
@@ -72,6 +65,7 @@ pipeline {
         stage('Install ZAP CLI') {
             steps {
                 sh '''
+                    . venv/bin/activate
                     pip install zap-cli
                 '''
             }
@@ -81,10 +75,17 @@ pipeline {
             steps {
                 script {
                     sh """
+                        # Esperar a que ZAP esté listo
                         zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} status -t 120
+                        
+                        # Abrir la URL de la app Flask
                         zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} open-url ${TARGET_URL}
+                        
+                        # Spider y active scan
                         zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} spider ${TARGET_URL}
                         zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} active-scan ${TARGET_URL}
+                        
+                        # Generar reporte HTML
                         zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} report -o ZAP-Baseline-Report.html -f html
                     """
                 }
@@ -118,4 +119,5 @@ pipeline {
         }
     }
 }
+
 
