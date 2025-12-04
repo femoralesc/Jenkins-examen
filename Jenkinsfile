@@ -6,6 +6,8 @@ pipeline {
         SONARQUBE_URL = "http://sonarqube:9000"
         SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
         TARGET_URL = "http://flaskapp:5000" // Contenedor Flask
+        ZAP_HOST = "zap"
+        ZAP_PORT = "8080"
     }
 
     stages {
@@ -14,7 +16,7 @@ pipeline {
             steps {
                 sh '''
                     apt update
-                    apt install -y python3 python3-venv python3-pip
+                    apt install -y python3 python3-venv python3-pip curl
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip
@@ -62,14 +64,35 @@ pipeline {
 
         stage('OWASP ZAP Scan via Plugin') {
             steps {
-                // El plugin se encarga de iniciar ZAP si no hay uno corriendo
-                zapAttack(
-                    target: "${TARGET_URL}",
-                    zapHome: '/usr/share/zaproxy', // cambia si ZAP está instalado en otra ruta
-                    reportFileName: 'ZAP-Baseline-Report.html',
-                    attackMode: 'FULL',            // FULL realiza spider + active scan
-                    contextName: 'Default Context'
-                )
+                script {
+                    echo 'Iniciando ZAP...'
+                    startZap(
+                        zapHome: '/usr/share/zaproxy', 
+                        daemon: true, 
+                        host: '0.0.0.0', 
+                        port: '8080'
+                    )
+
+                    echo 'Ejecutando Spider con ZAP...'
+                    runZapCrawler(
+                        target: "${TARGET_URL}",
+                        contextName: 'Default Context'
+                    )
+
+                    echo 'Ejecutando Active Scan con ZAP...'
+                    runZapAttack(
+                        target: "${TARGET_URL}",
+                        contextName: 'Default Context'
+                    )
+
+                    echo 'Archiving ZAP Report...'
+                    archiveZap(
+                        zapReportFile: 'ZAP-Baseline-Report.html',
+                        reportType: 'HTML'
+                    )
+
+                    stopZap()
+                }
             }
         }
 
