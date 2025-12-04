@@ -69,13 +69,19 @@ pipeline {
 
         stage('OWASP ZAP Baseline Scan') {
             steps {
-                zapPipeline(
-                    target: "${TARGET_URL}",
-                    zapHost: "zap",      // nombre del contenedor ZAP en la red jenkins-net
-                    zapPort: 8080,       // puerto interno del contenedor
-                    credentialId: "zap-cred",
-                    attackMode: "baseline"
-                )
+                script {
+                    // Inicia ZAP
+                    startZap(zapHost: 'zap', zapPort: 8080, credentialsId: 'zap-cred')
+
+                    // Realiza crawling de la aplicación
+                    runZapCrawler(target: "${TARGET_URL}")
+
+                    // Ejecuta escaneo activo en modo baseline
+                    runZapAttack(target: "${TARGET_URL}", attackMode: 'baseline')
+
+                    // Archiva el reporte para publicarlo después
+                    archiveZap()
+                }
             }
         }
 
@@ -106,3 +112,4 @@ pipeline {
         }
     }
 }
+
