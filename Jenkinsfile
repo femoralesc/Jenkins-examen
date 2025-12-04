@@ -5,7 +5,7 @@ pipeline {
         PROJECT_NAME = "pipeline-test"
         SONARQUBE_URL = "http://sonarqube:9000"
         SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
-        TARGET_URL = "http://172.26.115.231:5000"
+        TARGET_URL = "http://172.26.115.231:5000" // Cambia por tu app si es necesario
     }
 
     stages {
@@ -70,16 +70,19 @@ pipeline {
         stage('OWASP ZAP Baseline Scan') {
             steps {
                 script {
-                    // Inicia ZAP
-                    startZap(zapHost: 'zap', zapPort: 8080, credentialsId: 'zap-cred')
+                    // Usamos ZAP externo (contenedor)
+                    startZap(
+                        zapHost: 'zap',       // nombre del contenedor ZAP
+                        zapPort: 8080,        // puerto interno del contenedor
+                        credentialsId: 'zap-cred',
+                        externalZap: true     // Muy importante para no arrancar ZAP local
+                    )
 
-                    // Realiza crawling de la aplicación
+                    // Crawling y escaneo
                     runZapCrawler(target: "${TARGET_URL}")
-
-                    // Ejecuta escaneo activo en modo baseline
                     runZapAttack(target: "${TARGET_URL}", attackMode: 'baseline')
 
-                    // Archiva el reporte para publicarlo después
+                    // Archiva el reporte
                     archiveZap()
                 }
             }
