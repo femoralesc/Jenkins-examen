@@ -3,8 +3,6 @@ pipeline {
 
     environment {
         PROJECT_NAME = "pipeline-test"
-        SONARQUBE_URL = "http://sonarqube:9000"
-        SONARQUBE_TOKEN = "sqa_d1cae587e88c02f425c8ca6a1559612afb182877"
     }
 
     stages {
@@ -33,22 +31,14 @@ pipeline {
             }
         }
 
-        /*
-         * 🔥 SONARQUBE STATIC ANALYSIS
-         * Analiza SOLO código Python (.py)
-         * Busca vulnerabilidades directamente en vulnerable_flask_app.py
-         * Usa el archivo sonar-project.properties
-         */
         stage('SonarQube Static Code Analysis') {
             steps {
                 script {
-                    def scannerHome = tool 'SonarQubeScanner'
+                    def scannerHome = tool 'SonarScanner'
 
-                    withSonarQubeEnv('SonarQubeScanner') {
+                    withSonarQubeEnv('SonarQube') {
                         sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                                -Dsonar.host.url=$SONARQUBE_URL \
-                                -Dsonar.login=$SONARQUBE_TOKEN
+                            ${scannerHome}/bin/sonar-scanner
                         """
                     }
                 }
