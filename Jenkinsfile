@@ -9,6 +9,7 @@ pipeline {
     }
 
     stages {
+
         stage('Install Python') {
             steps {
                 sh '''
@@ -17,7 +18,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Setup Environment') {
             steps {
                 sh '''
@@ -28,6 +29,7 @@ pipeline {
                 '''
             }
         }
+
         stage('Python Security Audit') {
             steps {
                 sh '''
@@ -38,7 +40,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('SonarQube Analysis') {
             steps {
                 script {
@@ -55,6 +57,7 @@ pipeline {
                 }
             }
         }
+
         stage('Dependency Check') {
             environment {
                 NVD_API_KEY = credentials('nvdApiKey')
@@ -64,7 +67,32 @@ pipeline {
             }
         }
 
-        stage('Publish Reports') {
+        stage('OWASP ZAP Baseline Scan') {
+            steps {
+                zapPipeline(
+                    target: "${TARGET_URL}",
+                    zapHost: "zap",      // nombre del contenedor ZAP en la red jenkins-net
+                    zapPort: 8080,       // puerto interno del contenedor
+                    credentialId: "zap-cred",
+                    attackMode: "baseline"
+                )
+            }
+        }
+
+        stage('Publish ZAP Report') {
+            steps {
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: '.',                   
+                    reportFiles: 'ZAP-Baseline-Report.html',  
+                    reportName: 'OWASP ZAP Report'
+                ])
+            }
+        }
+
+        stage('Publish Dependency Check Report') {
             steps {
                 publishHTML([
                     allowMissing: false,
@@ -77,5 +105,4 @@ pipeline {
             }
         }
     }
-
 }
