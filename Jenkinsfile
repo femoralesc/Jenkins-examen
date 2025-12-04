@@ -5,7 +5,7 @@ pipeline {
         PROJECT_NAME = "pipeline-test"
         SONARQUBE_URL = "http://sonarqube:9000"
         SONARQUBE_TOKEN = "sqa_bee897a6d9063e06f1e34bc7f9c89c57bcdfe678"
-        TARGET_URL = "http://172.26.115.231:5000" // Cambia por tu app si es necesario
+        TARGET_URL = "http://flaskapp:5000" // Cambia "flaskapp" por el nombre de tu contenedor Flask en jenkins-net
     }
 
     stages {
@@ -69,16 +69,29 @@ pipeline {
 
         stage('OWASP ZAP Baseline Scan') {
             steps {
-                script {
-                    // Escaneo usando ZAP externo (contenedor)
-                    runZapCrawler(target: "${TARGET_URL}", zapHost: 'zap', zapPort: 8080)
-                    runZapAttack(target: "${TARGET_URL}", attackMode: 'baseline', zapHost: 'zap', zapPort: 8080)
-                    archiveZap()
-                }
+                sh '''
+                    docker run --rm \
+                    --network jenkins-net \
+                    -v $WORKSPACE:/zap/wrk/:rw \
+                    ghcr.io/zaproxy/zaproxy:stable \
+                    zap-baseline.py -t ${TARGET_URL} -r ZAP-Baseline-Report.html
+                '''
             }
         }
 
-        stage('Publish ZAP Report') {
+        stage('OWASP ZAP Full Scan') {
+            steps {
+                sh '''
+                    docker run --rm \
+                    --network jenkins-net \
+                    -v $WORKSPACE:/zap/wrk/:rw \
+                    ghcr.io/zaproxy/zaproxy:stable \
+                    zap-full-scan.py -t ${TARGET_URL} -r ZAP-Full-Scan.html
+                '''
+            }
+        }
+
+        stage('Publish ZAP Reports') {
             steps {
                 publishHTML([
                     allowMissing: true,
@@ -86,7 +99,15 @@ pipeline {
                     keepAll: true,
                     reportDir: '.',                   
                     reportFiles: 'ZAP-Baseline-Report.html',  
-                    reportName: 'OWASP ZAP Report'
+                    reportName: 'OWASP ZAP Baseline Report'
+                ])
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: '.',                   
+                    reportFiles: 'ZAP-Full-Scan.html',  
+                    reportName: 'OWASP ZAP Full Scan Report'
                 ])
             }
         }
@@ -105,5 +126,4 @@ pipeline {
         }
     }
 }
-
 
